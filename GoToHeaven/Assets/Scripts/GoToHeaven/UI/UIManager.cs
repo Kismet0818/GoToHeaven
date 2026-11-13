@@ -3,14 +3,13 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
 
 namespace GoToHeaven
 {
     /// <summary>
-    /// Builds and owns every screen of the game with uGUI at runtime.
-    /// No Canvas prefab or scene reference is required.
+    /// Lives on the GameCanvas prefab. It owns the six screen controllers and
+    /// the fade overlay; all visual layout is authored in the prefabs.
     /// </summary>
     public sealed class UIManager : MonoBehaviour
     {
@@ -33,35 +32,54 @@ namespace GoToHeaven
         public void Initialize(GameManager owner)
         {
             game = owner;
-            gameObject.layer = LayerMask.NameToLayer("UI");
-
-            canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 100;
-
-            var scaler = gameObject.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
-            scaler.referencePixelsPerUnit = 100f;
-
-            gameObject.AddComponent<GraphicRaycaster>();
-
+            EnsureCanvas();
             EnsureEventSystem();
-            FontAsset = CreateFont();
-            UIFactory.Font = FontAsset;
 
-            mainMenu = new MainMenuView(this, transform);
-            levelSelect = new LevelSelectView(this, transform);
-            settings = new SettingsView(this, transform);
-            hud = new HudView(this, transform);
-            pause = new PauseView(this, transform);
-            result = new ResultView(this, transform);
+            var sample = GetComponentInChildren<TMP_Text>(true);
+            FontAsset = sample != null ? sample.font : null;
 
-            BuildFade();
+            mainMenu = new MainMenuView(this, Require("MainMenu"));
+            levelSelect = new LevelSelectView(this, Require("LevelSelect"));
+            settings = new SettingsView(this, Require("Settings"));
+            hud = new HudView(this, Require("HUD"));
+            pause = new PauseView(this, Require("Pause"));
+            result = new ResultView(this, Require("Result"));
+
+            var fade = transform.Find("Fade");
+            if (fade != null)
+            {
+                fadeGroup = fade.GetComponent<CanvasGroup>();
+                fadeImage = fade.GetComponent<Image>();
+            }
+
+            if (fadeGroup == null) BuildFallbackFade();
+
             ShowMainMenu();
             SetFade(1f);
+        }
+
+        void EnsureCanvas()
+        {
+            canvas = GetComponent<Canvas>();
+            if (canvas == null)
+            {
+                canvas = gameObject.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.sortingOrder = 100;
+            }
+
+            var scaler = GetComponent<CanvasScaler>();
+            if (scaler == null)
+            {
+                scaler = gameObject.AddComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1920f, 1080f);
+                scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                scaler.matchWidthOrHeight = 0.5f;
+            }
+
+            if (GetComponent<GraphicRaycaster>() == null)
+                gameObject.AddComponent<GraphicRaycaster>();
         }
 
         void EnsureEventSystem()
@@ -73,58 +91,28 @@ namespace GoToHeaven
             go.AddComponent<StandaloneInputModule>();
         }
 
-        TMP_FontAsset CreateFont()
+        Transform Require(string name)
         {
-            var fontFile = Resources.Load<Font>(ArtPaths.Font);
-            if (fontFile != null)
-            {
-                try
-                {
-                    var created = TMP_FontAsset.CreateFontAsset(fontFile, 90, 9, GlyphRenderMode.SDFAA,
-                        1024, 1024, AtlasPopulationMode.Dynamic, true);
-                    if (created != null)
-                    {
-                        created.name = "Kaph Runtime";
-                        created.atlasPopulationMode = AtlasPopulationMode.Dynamic;
-                        created.isMultiAtlasTexturesEnabled = true;
-                        if (created.material != null && created.atlasTextures != null &&
-                            created.atlasTextures.Length > 0 && created.atlasTextures[0] != null)
-                            return created;
-                    }
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"[GoToHeaven] Could not create the Kaph TMP font, falling back: {e.Message}");
-                }
-            }
-
-            if (TMP_Settings.defaultFontAsset != null) return TMP_Settings.defaultFontAsset;
-            var liberation = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-            if (liberation != null) return liberation;
-
-            try
-            {
-                var osFont = Font.CreateDynamicFontFromOSFont(new[] { "Segoe UI", "Arial" }, 90);
-                if (osFont != null) return TMP_FontAsset.CreateFontAsset(osFont);
-            }
-            catch
-            {
-                // ignored, we surface the error below
-            }
-
-            Debug.LogError("[GoToHeaven] No TMP font could be created. UI text will be missing.");
-            return null;
+            var found = transform.Find(name);
+            if (found == null)
+                throw new MissingReferenceException($"GameCanvas 缺少子界面 '{name}'。请检查 UI Prefab。");
+            return found;
         }
 
-        void BuildFade()
+        void BuildFallbackFade()
         {
-            var rt = UIFactory.FullScreen("Fade", transform);
-            fadeImage = rt.gameObject.AddComponent<Image>();
+            var rt = new GameObject("Fade", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+            rt.transform.SetParent(transform, false);
+            var rect = (RectTransform)rt.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            fadeImage = rt.GetComponent<Image>();
             fadeImage.color = Color.black;
             fadeImage.raycastTarget = true;
-            fadeGroup = UIFactory.Group(rt.gameObject);
+            fadeGroup = rt.GetComponent<CanvasGroup>();
             fadeGroup.alpha = 1f;
-            fadeGroup.blocksRaycasts = true;
         }
 
         // ------------------------------------------------------------------ screens
@@ -213,13 +201,14 @@ namespace GoToHeaven
 
         public void SetGameplayInputBlocked(bool blocked)
         {
-            fadeGroup.blocksRaycasts = blocked;
+            if (fadeGroup != null) fadeGroup.blocksRaycasts = blocked;
         }
 
         // ------------------------------------------------------------------ fade
 
         public void SetFade(float alpha)
         {
+            if (fadeGroup == null) return;
             fadeGroup.alpha = alpha;
             fadeGroup.blocksRaycasts = alpha > 0.001f;
         }
@@ -236,6 +225,7 @@ namespace GoToHeaven
 
         IEnumerator FadeRoutine(float target, float duration)
         {
+            if (fadeGroup == null) yield break;
             fadeGroup.blocksRaycasts = true;
             float start = fadeGroup.alpha;
             float elapsed = 0f;
@@ -257,12 +247,25 @@ namespace GoToHeaven
 
         public bool Visible => root != null && root.activeSelf;
 
-        protected ScreenView(Transform parent, string name)
+        protected ScreenView(Transform viewRoot)
         {
-            var rt = UIFactory.FullScreen(name, parent);
-            root = rt.gameObject;
-            group = UIFactory.Group(root);
-            root.SetActive(false);
+            if (viewRoot == null) throw new MissingReferenceException("UI screen root is missing.");
+            root = viewRoot.gameObject;
+            group = root.GetComponent<CanvasGroup>();
+            if (group == null) group = root.AddComponent<CanvasGroup>();
+        }
+
+        protected static T Find<T>(Transform parent, string path) where T : Component
+        {
+            var child = parent.Find(path);
+            return child != null ? child.GetComponent<T>() : null;
+        }
+
+        protected static void Bind(Button button, Action action)
+        {
+            if (button == null) return;
+            button.onClick.RemoveAllListeners();
+            if (action != null) button.onClick.AddListener(() => action());
         }
 
         public virtual void Show()

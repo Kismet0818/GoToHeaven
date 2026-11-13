@@ -41,7 +41,7 @@ namespace GoToHeaven
             }
 
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            if (Application.isPlaying) DontDestroyOnLoad(gameObject);
             Application.targetFrameRate = 120;
             QualitySettings.vSyncCount = 0;
 
@@ -52,10 +52,29 @@ namespace GoToHeaven
             SetupCamera();
             Audio = new AudioManager(transform, Save.Data);
 
-            var uiGo = new GameObject("UI");
-            uiGo.transform.SetParent(transform, false);
-            UI = uiGo.AddComponent<UIManager>();
-            UI.Initialize(this);
+            UI = FindObjectOfType<UIManager>();
+            if (UI != null)
+            {
+                UI.transform.SetParent(transform, false);
+            }
+            else
+            {
+                var uiPrefab = Resources.Load<GameObject>("GoToHeaven/UI/GameCanvas");
+                if (uiPrefab != null)
+                {
+                    var uiGo = Instantiate(uiPrefab, transform);
+                    uiGo.name = "UI";
+                    UI = uiGo.GetComponent<UIManager>();
+                }
+            }
+            if (UI == null)
+            {
+                Debug.LogError("[GoToHeaven] GameCanvas prefab is missing. UI cannot be initialized.");
+            }
+            else
+            {
+                UI.Initialize(this);
+            }
 
             sceneRoot = new GameObject("Scene").transform;
             sceneRoot.SetParent(transform, false);
@@ -65,7 +84,7 @@ namespace GoToHeaven
 
         void Start()
         {
-            StartCoroutine(UI.FadeIn(0.8f));
+            if (UI != null) StartCoroutine(UI.FadeIn(0.8f));
         }
 
         void Update()

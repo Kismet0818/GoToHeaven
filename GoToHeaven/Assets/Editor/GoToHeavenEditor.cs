@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -88,7 +88,6 @@ namespace GoToHeaven.EditorTools
                 { "Traps/Trampoline/Idle.png", "Traps/trampoline_idle.png" },
                 { "Traps/Trampoline/Jump (28x28).png", "Traps/trampoline_jump.png" },
                 { "Traps/Saw/On (38x38).png", "Traps/saw.png" },
-                { "Traps/Saw/Off.png", "Traps/saw_off.png" },
                 { "Other/Dust Particle.png", "VFX/dust.png" },
                 { "Other/Confetti (16x16).png", "VFX/confetti.png" },
                 { "Menu/Buttons/Play.png", "UI/play.png" },
@@ -99,9 +98,6 @@ namespace GoToHeaven.EditorTools
                 { "Menu/Buttons/Next.png", "UI/next.png" },
                 { "Menu/Buttons/Previous.png", "UI/previous.png" },
                 { "Menu/Buttons/Settings.png", "UI/settings.png" },
-                { "Menu/Buttons/Volume.png", "UI/volume.png" },
-                { "Menu/Buttons/Achievements.png", "UI/achievements.png" },
-                { "Menu/Buttons/Leaderboard.png", "UI/leaderboard.png" }
             };
 
             int copied = 0;
@@ -184,3 +180,4 @@ namespace GoToHeaven.EditorTools
         }
     }
 }
+

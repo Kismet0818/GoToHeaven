@@ -30,20 +30,5 @@ namespace GoToHeaven
 
         public const string Dust = Root + "VFX/dust";
         public const string Confetti = Root + "VFX/confetti";
-
-        public const string IconPlay = Root + "UI/play";
-        public const string IconRestart = Root + "UI/restart";
-        public const string IconBack = Root + "UI/back";
-        public const string IconClose = Root + "UI/close";
-        public const string IconLevels = Root + "UI/levels";
-        public const string IconNext = Root + "UI/next";
-        public const string IconPrevious = Root + "UI/previous";
-        public const string IconSettings = Root + "UI/settings";
-        public const string IconVolume = Root + "UI/volume";
-        public const string IconTrophy = Root + "UI/achievements";
-        public const string IconLeaderboard = Root + "UI/leaderboard";
-
-        public const string Font = "GoToHeaven/Fonts/kaph_regular";
-        public const string LevelFolder = "GoToHeaven/Levels";
     }
 }
