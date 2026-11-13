@@ -1,0 +1,41 @@
+# Unity / Tuanjie generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mn]emoryCaptures/
+[Rr]ecordings/
+_Recovery/
+
+# Local verification copy
+_smoke/
+dsh-acl-recovery/
+
+# IDE and generated project files
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.apk
+*.aab
+*.unitypackage
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
