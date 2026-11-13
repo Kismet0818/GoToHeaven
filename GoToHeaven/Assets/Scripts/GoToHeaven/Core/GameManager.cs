@@ -176,9 +176,23 @@ namespace GoToHeaven
             Deaths = 0;
 
             var data = Levels.Get(index);
-            var levelGo = new GameObject($"Level {index + 1}");
-            levelGo.transform.SetParent(sceneRoot, false);
-            Level = levelGo.AddComponent<LevelController>();
+            if (data == null || data.Prefab == null)
+            {
+                Debug.LogError($"[GoToHeaven] Level {index + 1} has no prefab. Cannot load.");
+                transitioning = false;
+                yield break;
+            }
+
+            var levelGo = Instantiate(data.Prefab, sceneRoot);
+            levelGo.name = data.displayName;
+            Level = levelGo.GetComponent<LevelController>();
+            if (Level == null)
+            {
+                Debug.LogError("[GoToHeaven] Level prefab is missing LevelController.");
+                Destroy(levelGo);
+                transitioning = false;
+                yield break;
+            }
             Level.Initialize(data, this);
 
             SetState(GameState.Playing);

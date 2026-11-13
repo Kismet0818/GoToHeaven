@@ -9,7 +9,7 @@
 ```mermaid
 flowchart TB
     subgraph Entry["① 入口与全局控制"]
-        Boot["Boot.scene<br/>仅 Main Camera"]
+        Boot["Boot.scene<br/>Main Camera + GameCanvas"]
         Bootstrap["GameBootstrap<br/>RuntimeInitializeOnLoadMethod"]
         GM["GameManager<br/>DontDestroyOnLoad · 状态机"]
         Boot --> Bootstrap --> GM
@@ -18,7 +18,7 @@ flowchart TB
     subgraph Runtime["② 运行时对象（由 GameManager 持有）"]
         direction LR
         UI["UI 表现层<br/>UIManager / 6 Views / HUD"]
-        LEVEL["关卡与玩家<br/>LevelController / Player / Entities"]
+        LEVEL["关卡与玩家<br/>LevelController / Tilemap Prefab / Player"]
         ART["资源与表现<br/>SpriteLibrary / ProceduralArt / Fx"]
         SVC["系统服务<br/>Audio / Save / LevelRepository"]
     end
@@ -30,14 +30,15 @@ flowchart TB
 
     subgraph Data["③ 数据 / 资源 / 编辑器"]
         UIPREF["UI Prefabs<br/>GameCanvas + 6 Screens"]
-        RES["Resources/GoToHeaven<br/>28 PNG · 3 JSON · TTF"]
+        RES["Resources/GoToHeaven<br/>28 PNG · 3 Level Prefabs · TTF"]
         PREFS["PlayerPrefs<br/>GoToHeaven.Save.v1"]
         TOOLS["Editor Tools<br/>Sync / Fix / Validate / Smoke"]
     end
 
     UI -.->|绑定| UIPREF
+    LEVEL -.->|实例化| RES
     ART -.->|Resources.Load| RES
-    SVC -.->|JSON 扫描| RES
+    SVC -.->|关卡 Prefab 扫描| RES
     SVC -.->|读写| PREFS
     TOOLS -.->|同步 / 验证| RES
 ```
@@ -80,19 +81,21 @@ stateDiagram-v2
 | UI | `MainMenuView` / `LevelSelectView` / `SettingsView` | 主菜单、选关、设置 Prefab 控制器 |
 | UI | `HudView` / `PauseView` / `ResultView` | 生命/金币/计时、暂停、失败/胜利 Prefab 控制器 |
 | UI | `UIButtonFX` / `UIAnimatedImage` / `UITheme` | 按钮动效、角色帧动画、颜色主题 |
-| 关卡 | `LevelController` | 从 `LevelData` 生成平台/道具/玩家/相机边界 |
+| 关卡 | `LevelController` | 实例化关卡 Prefab 后生成玩家、绑定实体、计算相机边界、通关/重生 |
 | 玩家 | `PlayerController` | 土狼时间、跳跃缓冲、可变跳高、二段跳、蹬墙跳、冲刺 |
 | 玩家 | `PlayerHealth` / `PlayerAnimator` | 3 心、无敌帧、受击/重生、Mask Dude 帧动画 |
-| 关卡 | `LevelEntities` | Platform、MovingPlatform、Hazard、SawTrap、Trampoline、Checkpoint、Goal、Coin |
+| 关卡 | `LevelDefinition` / `PlayerSpawn` | 关卡元数据；出生点标记 |
+| 关卡 | `Platform` / `MovingPlatform` / `Hazard` / `SawTrap` | 单向平台、移动平台、伤害、移动锯 |
+| 关卡 | `Trampoline` / `Checkpoint` / `Goal` / `Coin` | 跳床、检查点、终点、金币 |
 | 相机 | `CameraFollow` / `Backdrop` | 平滑跟随、边界钳制、震动、视差天空/山/云 |
 | 资源 | `SpriteLibrary` / `ArtPaths` | Resources 加载、运行时切帧、地形图集缓存 |
 | 资源 | `ProceduralArt` | 天空/山/云等背景程序化图形（UI 已烘焙为 Sprite 资产） |
 | 资源 | `SpriteAnimator` / `Fx` | 帧动画、尘土/彩纸/火花/冲刺残影 |
 | 服务 | `AudioManager` | 程序化 SFX + 循环芯片 BGM，音量与暂停 duck |
 | 服务 | `SaveSystem` | PlayerPrefs + JSON：解锁、最佳时间/金币、设置 |
-| 服务 | `LevelRepository` | 扫描 `Resources/GoToHeaven/Levels/*.json` 并按文件名排序 |
+| 服务 | `LevelRepository` | 读取 `Resources/GoToHeaven/Levels/*.prefab` 的 `LevelDefinition` 并按文件名排序 |
 | 服务 | `GameLayers` | Ground / Player / Hazard / Collectible / OneWay 图层 |
-| 数据 | `LevelData` | 关卡 JSON 的序列化模型（平台/金币/危险/检查点/终点） |
+| 数据 | `LevelData` | 关卡 Prefab 的运行时元数据（名称/主题/时限/killY/金币数/Prefab 引用） |
 | 编辑器 | `GoToHeavenEditor` | 同步 Material 素材、修复导入、验证工程、重置存档 |
 | 编辑器 | `PlayModeSmokeTest` | 批处理 Play Mode 冒烟测试 |
 
@@ -112,10 +115,10 @@ sequenceDiagram
     UI->>GM: PlayFromMenu()
     GM->>UI: FadeOut
     GM->>LR: Get(levelIndex)
-    LR-->>GM: LevelData
-    GM->>LC: Initialize(data)
-    LC->>SL: 加载地形/角色/道具精灵
-    LC->>LC: 生成平台/金币/危险/玩家
+    LR-->>GM: LevelData + Prefab
+    GM->>LC: Instantiate(Prefab) + Initialize(data)
+    LC->>SL: 加载角色/道具帧
+    LC->>LC: 绑定 Tilemap/金币/危险/检查点/终点/玩家
     LC->>GM: 注册 HUD/相机边界
     GM->>UI: ShowHud + FadeIn
     GM->>A: PlayMusic
@@ -128,7 +131,9 @@ sequenceDiagram
 
 | 数据 | 来源 | 消费方 |
 | --- | --- | --- |
-| 关卡布局 | `Assets/Resources/GoToHeaven/Levels/*.json` | `LevelRepository` → `LevelController` |
+| 关卡布局 | `Assets/Resources/GoToHeaven/Levels/*.prefab`（Tilemap + 道具） | `LevelRepository` → `GameManager` 实例化 → `LevelController` |
+| 关卡 Tile | `Assets/Resources/GoToHeaven/Levels/Tiles/*.asset` | 关卡 Prefab 的 Tilemap |
+| 关卡道具图 | `Assets/Resources/GoToHeaven/Levels/Sprites/*.png` + `Art/**` | 关卡 Prefab 的 SpriteRenderer / 运行时帧动画 |
 | 角色/地形/道具图 | `Assets/Resources/GoToHeaven/Art/**`（由 `Assets/Scenes/UI/Material` 同步） | `SpriteLibrary` |
 | UI 布局 | `Assets/Resources/GoToHeaven/UI/GameCanvas.prefab` + `Prefabs/*.prefab` | `GameManager` / `UIManager` |
 | UI Sprite | `Assets/Resources/GoToHeaven/UI/Sprites/ui_*.png` | 界面 Prefab 的 Image 组件 |
@@ -136,7 +141,30 @@ sequenceDiagram
 | 进度/设置 | `PlayerPrefs: GoToHeaven.Save.v1` | `SaveSystem` ↔ `UIManager` / `AudioManager` |
 | 关卡顺序 | Resources 内文件名排序（level01/02/03） | `LevelRepository` / 选关界面 |
 
-## 6. UI Prefab 结构
+## 6. 关卡 Prefab 结构
+
+```text
+Assets/Resources/GoToHeaven/Levels/
+├─ level01.prefab / level02.prefab / level03.prefab
+├─ Tiles/                  Terrain Tile 资产（草地/石块/砖块）
+└─ Sprites/                金币、锯、检查点、终点等 Sprite
+
+level01 (LevelController + LevelDefinition)
+├─ PlayerSpawn
+├─ Grid
+│  └─ Terrain (Tilemap + TilemapRenderer + TilemapCollider2D + CompositeCollider2D)
+├─ OneWay ...              BoxCollider2D + PlatformEffector2D
+├─ Mover ...               MovingPlatform + Kinematic Rigidbody2D
+├─ Coin / Spikes / Saw / Trampoline / Checkpoint / Goal
+```
+
+- 在 Prefab Mode 中用 **Tile Palette** 刷 `Tiles/` 里的 Tile；Grid Cell Size = 1。
+- 道具直接拖动/复制；`MovingPlatform` 的 `moveX/moveY/speed/phase`、`SawTrap` 的移动参数、`Trampoline.power` 都在 Inspector 编辑。
+- `LevelDefinition` 保存 `id/displayName/subtitle/theme/parTime/killY/coinCount`。
+- `LevelRepository` 扫描该目录下的关卡 Prefab；文件名决定顺序。
+- 新增关卡：复制一个关卡 Prefab，改 `LevelDefinition`，确保有 `PlayerSpawn` 和 `Goal`，放入 `Levels/` 即可。
+
+## 7. UI Prefab 结构
 
 ```text
 Assets/Resources/GoToHeaven/UI/
@@ -163,21 +191,22 @@ Assets/Resources/GoToHeaven/UI/
   `HUD/LevelPanel/LevelName|Timer`、`HUD/StatsPanel/Heart0..2|CoinText|Pause`、
   `Result/Panel/GameOverButtons/RETRY`、`Result/Panel/VictoryButtons/Next|Replay|Menu`。
 
-## 7. 关键设计决策
+## 8. 关键设计决策
 
-1. **UI 用 Prefab/Canvas，玩法用运行时构建**：UI 布局与样式在 GameCanvas + 六个 Screen Prefab 中编辑；关卡、角色、平台与音频源由代码创建。这样既保留可视化编辑 UI 的工作流，也避开原工程预制体 GUID 失效的历史问题。
-2. **LevelData 是唯一关卡输入**：新增关卡只需投放 JSON，不改代码；编辑器工具可校验。
-3. **运行时切帧**：角色/道具的横向雪碧图按 32/64 像素切帧，不依赖导入器的 Sprite 矩形；地形按 3×3 规则拼块。
+1. **UI 与关卡都用 Prefab**：UI 用 GameCanvas + 六个 Screen Prefab；每关一个 Level Prefab，地形为 Tilemap，道具为 Prefab 内对象。玩家与音频源仍由代码生成。
+2. **关卡 Prefab 是唯一关卡输入**：`LevelDefinition` 提供元数据，`LevelRepository` 负责发现和排序，`GameManager` 负责实例化；不再读取 JSON。
+3. **运行时切帧**：角色/道具的横向雪碧图按 32/64 像素切帧，不依赖导入器的 Sprite 矩形；地形由 Tilemap 拼块。
 4. **程序化音频**：全部 SFX 与 BGM 由代码合成，工程不需要音频文件。
 5. **UI 资产预生成**：九宫格面板、爱心、星星、锁、暂停图标等运行时 Sprite 已烘焙为 `UI/Sprites/ui_*.png`；TMP 字体已生成 `Kaph SDF.asset`，Prefab 直接引用，不再运行时创建字体。
 6. **编辑器工具与运行时分离**：`Assets/Editor` 不参与构建；冒烟测试只在批处理中运行。
 
-## 8. 验证
+## 9. 验证
 
 ```text
-GOTOTHEAVEN_SMOKE_PASS frames=66551 level=0 coins=0 time=1.26 grounded=True health=3
+GOTOTHEAVEN_SMOKE_PASS frames=58630 level=0 coins=0 time=1.25 grounded=True health=3
 ```
 
-冒烟测试覆盖：启动 → 主菜单 → 加载 level01 → 玩家落地（grounded）→ 生命/计时/字体/地形加载 → 触发通关 → `Victory` 状态。
+冒烟测试覆盖：启动 → 主菜单 → 实例化 level01 Prefab → 玩家落在 Tilemap 地形（grounded）→ 生命/计时/字体加载 → 触发通关 → `Victory` 状态。
+
 
 

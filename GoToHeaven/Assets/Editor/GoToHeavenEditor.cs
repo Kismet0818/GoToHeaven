@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -44,10 +44,10 @@ namespace GoToHeaven.EditorTools
                 problems++;
             }
 
-            var levels = AssetDatabase.FindAssets("t:TextAsset", new[] { LevelRoot });
+            var levels = AssetDatabase.FindAssets("t:Prefab", new[] { LevelRoot });
             if (levels.Length == 0)
             {
-                Debug.LogError($"[GoToHeaven] No level JSON found under {LevelRoot}.");
+                Debug.LogError($"[GoToHeaven] No level prefab found under {LevelRoot}.");
                 problems++;
             }
 

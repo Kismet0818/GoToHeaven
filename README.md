@@ -1,8 +1,8 @@
-# GoToHeaven
+﻿# GoToHeaven
 
 一个基于 **团结引擎 / Tuanjie 2022.3.62t7（Unity 2022.3 LTS 分支）** 与 C# 的 2D 平台跳跃游戏框架。
 所有美术来自工程内的 `Assets/Scenes/UI/Material`；UI 采用 **GameCanvas + 六个 Screen Prefab**，由 C# 控制器绑定数据；
-关卡、角色、地形、音效在运行时生成。
+关卡采用每关一个 **Tilemap 关卡 Prefab**；角色、音频和背景在运行时生成。
 
 ## 架构图
 
@@ -56,7 +56,10 @@ Assets/
       Sprites/ui_*.png            # 烘焙后的九宫格/爱心/星星等 UI Sprite
       Fonts/Kaph SDF.asset        # 预生成的 TMP 字体资产
     Fonts/kaph_regular.ttf        # Kaph 源字体（TMP 动态字体的源文件）
-    Levels/level01..03.json       # 关卡数据
+    Levels/
+      level01..03.prefab          # 三个关卡 Prefab（Tilemap + 道具）
+      Tiles/                      # Tilemap 使用的 Tile 资产
+      Sprites/                    # 关卡道具 Sprite
   Scenes/
     Boot.scene                   # 相机 + GameCanvas 实例
   Scripts/GoToHeaven/
@@ -75,41 +78,52 @@ Docs/
   ARCHITECTURE.md                # 架构说明 / Mermaid 文字版
 ```
 
-## 关卡 JSON 格式
+## 关卡 Prefab / Tilemap 工作流
 
-新增关卡只需要把 JSON 放到 `Assets/Resources/GoToHeaven/Levels/`，文件名决定顺序（如 `level04.json`），
-无需改代码或场景。字段如下（坐标单位为世界单位，1 单位 = 16 像素）：
+每关是一个独立 Prefab：
 
-```json
-{
-  "id": "level04",
-  "displayName": "New Peak",
-  "subtitle": "Short description",
-  "theme": "day",                 // day | dusk | night
-  "parTime": 60,
-  "killY": -16,
-  "spawn": { "x": 0, "y": 0.1 },
-  "goal": { "x": 40, "y": 0 },
-  "platforms": [
-    { "x": -8, "y": -3, "width": 20, "height": 3, "type": "grass" },
-    { "x": 16, "y": 2, "width": 4, "height": 1, "type": "stone", "oneWay": true }
-  ],
-  "coins": [ { "x": 2, "y": 2 } ],
-  "spikes": [ { "x": 8, "y": 0, "width": 2 } ],
-  "saws": [ { "x": 20, "y": 4, "moveX": 4, "moveY": 0, "speed": 1.5, "phase": 0 } ],
-  "movers": [ { "x": 24, "y": 0, "width": 3, "height": 1, "moveX": 5, "moveY": 0, "speed": 1.3, "phase": 0, "type": "stone" } ],
-  "trampolines": [ { "x": 30, "y": 0, "power": 27 } ],
-  "checkpoints": [ { "x": 26, "y": 0 } ]
-}
+```text
+Assets/Resources/GoToHeaven/Levels/
+├─ level01.prefab          First Steps
+├─ level02.prefab          Gap Garden
+├─ level03.prefab          Sky Ascent
+├─ Tiles/                  Tilemap 使用的 Tile 资产（草地/石块/砖块）
+└─ Sprites/                金币、锯子、检查点等预制体用的 Sprite
 ```
 
-约定：
+每个关卡 Prefab 的结构：
 
-- `platforms` / `movers` 的 `x, y` 是**左下角**；`spawn` / `checkpoints` / `goal` / `trampolines` 是**脚底中心**。
-- `height` 建议使用整数；地形按 1 单位一格拼接。
-- 单向平台 `oneWay: true` 支持 `S + Space` 下落。
-- `saws`/`movers` 的 `moveX, moveY` 是正弦往返的位移，`phase` 是相位（0 表示从起点出发）。
-- 三个示例关卡都经过跳跃距离/高度校核，可作为数值参考。
+```text
+level01 (LevelController + LevelDefinition)
+├─ PlayerSpawn
+├─ Grid
+│  └─ Terrain (Tilemap + TilemapCollider2D + CompositeCollider2D)
+├─ OneWay ...             单向平台（Platform + BoxCollider2D + PlatformEffector2D）
+├─ Mover ...              移动平台（MovingPlatform + Kinematic Rigidbody2D）
+├─ Coin ...               金币
+├─ Spikes ...             尖刺（Hazard + Trigger）
+├─ Saw ...                移动锯（SawTrap）
+├─ Trampoline ...         跳床
+├─ Checkpoint ...         检查点
+└─ Goal ...               终点
+```
+
+编辑方式：
+
+- 双击 `level01.prefab` 进入 Prefab Mode。
+- 地形直接用 **Tile Palette** 刷 `Tiles/` 里的 Tile；`Grid` 的 Cell Size 是 1。
+- 金币、陷阱、移动平台、检查点、终点直接拖动/复制；数值在 Inspector 里改。
+- `LevelDefinition` 管理 `id / displayName / subtitle / theme / parTime / killY / coinCount`。
+- `PlayerSpawn` 标记出生点；`Goal` 是终点触发器。
+- 新增关卡：复制一个关卡 Prefab，重命名（决定排序），改 `LevelDefinition`，然后放进 `Levels/` 即可，`LevelRepository` 会自动扫描。
+
+运行时：
+
+- `LevelRepository` 从 `Resources/GoToHeaven/Levels` 读取所有关卡 Prefab 的 `LevelDefinition`。
+- `GameManager` 实例化选中的关卡 Prefab。
+- `LevelController` 只负责生成玩家、绑定金币/检查点/终点、计算相机边界和处理通关/死亡。
+- 地形碰撞来自 `TilemapCollider2D + CompositeCollider2D`，单向平台使用 `PlatformEffector2D`。
+- 旧的 JSON 关卡数据已删除，Prefab 是唯一关卡来源。
 
 ## 添加/替换美术
 
@@ -118,7 +132,7 @@ Docs/
 
 - `GoToHeaven/Sync Art From Material`：重新同步所需素材到 Resources。
 - `GoToHeaven/Fix Art Import Settings`：把资源设为 Sprite、Point 过滤、16 PPU、无压缩。
-- `GoToHeaven/Validate Project`：检查图层、场景、关卡 JSON 与贴图导入。
+- `GoToHeaven/Validate Project`：检查图层、场景、关卡 Prefab 与贴图导入。
 - `GoToHeaven/Reset Save Data`：清除解锁与设置。
 - 批处理 Play Mode 冒烟测试：见 `Assets/Editor/PlayModeSmokeTest.cs` 顶部注释。
 
@@ -144,8 +158,8 @@ Pixel Adventure 实际使用的源文件保留在 `Assets/Scenes/UI/Material`；
 
 ## 设计说明
 
-- **UI 用 Prefab/Canvas，玩法用运行时构建**：UI 布局与样式在 Prefab 中编辑；关卡、平台、角色和音频源由代码生成。
-  这样既保留了可视化编辑 UI 的工作流，也避开了原工程预制体 GUID 失效的历史问题。
+- **UI 与关卡都用 Prefab**：UI 用 GameCanvas + 六个 Screen Prefab；关卡每关一个 Prefab，地形是 Tilemap，道具是 Prefab 内的对象。玩家和音频源仍由代码生成。
+- **关卡生命周期**：`LevelRepository` 读取关卡 Prefab 的 `LevelDefinition`，`GameManager` 实例化 Prefab，`LevelController` 负责玩家/检查点/终点/相机。
 - **Canvas 生命周期**：`GameManager` 启动时优先接管 Boot 场景里的 `GameCanvas`，并把它挂到常驻根节点下；
   在其他场景按 Play 时会回退到 Resources 中的 `GameCanvas.prefab`。
 - **图层**：`Ground`、`Player`、`Hazard`、`Collectible`、`OneWay` 已写入 `TagManager`；
@@ -165,13 +179,13 @@ Pixel Adventure 实际使用的源文件保留在 `Assets/Scenes/UI/Material`；
 ## 验证
 
 - 运行时代码通过独立 Roslyn 编译（引用 Tuanjie 的 UnityEngine/UI/TextMeshPro 程序集），无错误。
-- 关卡 JSON 通过结构化校验（3 个关卡、平台尺寸、出生点支撑面、ID 唯一性）。
-- UI Prefab 完整性：GameCanvas + 6 个界面 Prefab + Fade、22 个 UI Sprite 资产、Kaph SDF 字体；
-  Prefab 中无丢失脚本引用。
+- 关卡 JSON 已转为 3 个 Tilemap 关卡 Prefab，Prefab 中无丢失脚本引用。
 - 在隔离副本上用团结引擎批处理跑通 **Play Mode 冒烟测试**：
-  启动 → 主菜单 → 加载 `level01` → 验证玩家落在生成地形上（`grounded=True`）、
-  生命值为 3、计时器推进、TMP 字体/精灵/地形图集加载成功 → 触发通关 → 进入 `Victory` 状态。
-  实测输出：`GOTOTHEAVEN_SMOKE_PASS frames=66551 level=0 coins=0 time=1.26 grounded=True health=3`。
+  启动 → 主菜单 → 加载 level01 Prefab → 验证玩家落在 Tilemap 地形上（`grounded=True`）、
+  生命值为 3、计时器推进、TMP 字体/精灵/地形加载成功 → 触发通关 → 进入 `Victory` 状态。
+  实测输出：`GOTOTHEAVEN_SMOKE_PASS frames=58630 level=0 coins=0 time=1.25 grounded=True health=3`。
   命令见 `Assets/Editor/PlayModeSmokeTest.cs` 顶部注释。
 - 冒烟测试在项目副本中运行，不会影响你正在打开的工程；副本与临时文件已清理。
+
+
 

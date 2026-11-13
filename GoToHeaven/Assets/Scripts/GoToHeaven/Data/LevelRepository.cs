@@ -4,8 +4,8 @@ using UnityEngine;
 namespace GoToHeaven
 {
     /// <summary>
-    /// Loads every JSON level placed in Resources/GoToHeaven/Levels and keeps them
-    /// ordered by asset name (level01, level02, ...). Adding a level is a drop-in.
+    /// Loads one prefab per level from Resources/GoToHeaven/Levels and exposes
+    /// its authored metadata as LevelData for menus/HUD.
     /// </summary>
     public sealed class LevelRepository
     {
@@ -18,43 +18,43 @@ namespace GoToHeaven
 
         public LevelRepository()
         {
-            var assets = Resources.LoadAll<TextAsset>(ResourceFolder);
-            var ordered = new List<TextAsset>(assets);
+            var prefabs = Resources.LoadAll<GameObject>(ResourceFolder);
+            var ordered = new List<GameObject>(prefabs);
             ordered.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
 
-            foreach (var asset in ordered)
+            foreach (var prefab in ordered)
             {
-                try
+                var def = prefab.GetComponent<LevelDefinition>();
+                if (def == null)
                 {
-                    var data = JsonUtility.FromJson<LevelData>(asset.text);
-                    if (data == null)
-                    {
-                        Debug.LogWarning($"[GoToHeaven] Empty level file: {asset.name}");
-                        continue;
-                    }
+                    Debug.LogWarning($"[GoToHeaven] Level prefab '{prefab.name}' has no LevelDefinition.");
+                    continue;
+                }
 
-                    if (string.IsNullOrEmpty(data.id)) data.id = asset.name;
-                    levels.Add(data.Sanitize());
-                }
-                catch (System.Exception e)
+                var coins = prefab.GetComponentsInChildren<Coin>(true);
+                int actualCoins = coins.Length > 0 ? coins.Length : def.coinCount;
+                levels.Add(new LevelData
                 {
-                    Debug.LogError($"[GoToHeaven] Failed to parse level '{asset.name}': {e.Message}");
-                }
+                    id = string.IsNullOrEmpty(def.id) ? prefab.name : def.id,
+                    displayName = def.displayName,
+                    subtitle = def.subtitle,
+                    theme = def.theme,
+                    parTime = Mathf.Max(5f, def.parTime),
+                    killY = def.killY,
+                    coinCount = actualCoins,
+                    Prefab = prefab
+                });
             }
 
             if (levels.Count == 0)
-            {
-                Debug.LogWarning("[GoToHeaven] No level JSON found. Using the generated fallback level.");
-                levels.Add(LevelData.CreateFallback());
-            }
+                Debug.LogError("[GoToHeaven] No level prefabs found in Resources/GoToHeaven/Levels.");
 
-            Debug.Log($"[GoToHeaven] Loaded {levels.Count} level(s): {string.Join(", ", levels.ConvertAll(l => l.id))}");
+            Debug.Log($"[GoToHeaven] Loaded {levels.Count} level prefab(s): {string.Join(", ", levels.ConvertAll(l => l.id))}");
         }
 
         public LevelData Get(int index)
         {
-            if (levels.Count == 0) return LevelData.CreateFallback();
-            return levels[Mathf.Clamp(index, 0, levels.Count - 1)];
+            return levels.Count == 0 ? null : levels[Mathf.Clamp(index, 0, levels.Count - 1)];
         }
     }
 }

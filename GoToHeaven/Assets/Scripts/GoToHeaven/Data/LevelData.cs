@@ -123,7 +123,12 @@ namespace GoToHeaven
         public TrampolineDef[] trampolines = Array.Empty<TrampolineDef>();
         public CheckpointDef[] checkpoints = Array.Empty<CheckpointDef>();
 
-        public int CoinCount => coins != null ? coins.Length : 0;
+        /// <summary>Set by LevelRepository for prefab-driven levels; not serialized in JSON.</summary>
+        [System.NonSerialized] public GameObject Prefab;
+        /// <summary>Authoring metadata count used before a level prefab is instantiated.</summary>
+        public int coinCount;
+
+        public int CoinCount => coinCount > 0 ? coinCount : (coins != null ? coins.Length : 0);
 
         /// <summary>Fills in defaults and removes degenerate platform sizes after parsing.</summary>
         public LevelData Sanitize()
