@@ -4908,6 +4908,16 @@ Tilemap:
       m_TileObjectToInstantiateIndex: 65535
       dummyAlignment: 0
       m_AllTileFlags: 2147483649
+  - first: {x: 33, y: 0, z: 0}
+    second:
+      serializedVersion: 2
+      m_TileIndex: 6
+      m_TileSpriteIndex: 6
+      m_TileMatrixIndex: 0
+      m_TileColorIndex: 0
+      m_TileObjectToInstantiateIndex: 65535
+      dummyAlignment: 0
+      m_AllTileFlags: 2147483649
   m_AnimatedTiles: {}
   m_TileAssetArray:
   - m_RefCount: 40
@@ -4922,6 +4932,8 @@ Tilemap:
     m_Data: {fileID: 11400000, guid: e185543e451cfef4aaec40208952a90e, type: 2}
   - m_RefCount: 4
     m_Data: {fileID: 11400000, guid: 43d7ffc3c51a7e14fb5369c4f328bbb1, type: 2}
+  - m_RefCount: 1
+    m_Data: {fileID: 11400000, guid: 61151e1e84ae7d64d845998151ae19e0, type: 2}
   m_TileSpriteArray:
   - m_RefCount: 40
     m_Data: {fileID: 21300000, guid: 361976e48a8b78240b93e33914c1db84, type: 3}
@@ -4935,8 +4947,10 @@ Tilemap:
     m_Data: {fileID: 21300000, guid: 2f96a6afeb32ecc489e68cb1ca510f40, type: 3}
   - m_RefCount: 4
     m_Data: {fileID: 21300000, guid: ac4c5e13d6515fa439aa55db1bfd1a70, type: 3}
+  - m_RefCount: 1
+    m_Data: {fileID: 21300000, guid: f0c60c1c6b07da04d940d166a914af0d, type: 3}
   m_TileMatrixArray:
-  - m_RefCount: 180
+  - m_RefCount: 181
     m_Data:
       e00: 1
       e01: 0
@@ -4955,13 +4969,13 @@ Tilemap:
       e32: 0
       e33: 1
   m_TileColorArray:
-  - m_RefCount: 180
+  - m_RefCount: 181
     m_Data: {r: 1, g: 1, b: 1, a: 1}
   m_TileObjectToInstantiateArray: []
   m_AnimationFrameRate: 1
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Origin: {x: -10, y: -3, z: 0}
-  m_Size: {x: 72, y: 3, z: 1}
+  m_Size: {x: 72, y: 4, z: 1}
   m_TileAnchor: {x: 0.5, y: 0.5, z: 0}
   m_TileOrientation: 0
   m_TileOrientationMatrix:
@@ -5138,9 +5152,69 @@ CompositeCollider2D:
   m_EdgeRadius: 0
   m_ColliderPaths:
   - m_Collider: {fileID: 8869288324406095788}
-    m_ColliderPaths: []
+    m_ColliderPaths:
+    - - X: 420000000
+        Y: 0
+      - X: 340000000
+        Y: 0
+      - X: 340000000
+        Y: 10000000
+      - X: 330000000
+        Y: 10000000
+      - X: 330000000
+        Y: 0
+      - X: 300000000
+        Y: 0
+      - X: 300000000
+        Y: -30000000
+      - X: 420000000
+        Y: -30000000
+    - - X: 120000000
+        Y: 0
+      - X: -100000000
+        Y: 0
+      - X: -100000000
+        Y: -30000000
+      - X: 120000000
+        Y: -30000000
+    - - X: 240000000
+        Y: 0
+      - X: 160000000
+        Y: 0
+      - X: 160000000
+        Y: -30000000
+      - X: 240000000
+        Y: -30000000
+    - - X: 620000000
+        Y: 0
+      - X: 440000000
+        Y: 0
+      - X: 440000000
+        Y: -30000000
+      - X: 620000000
+        Y: -30000000
   m_CompositePaths:
-    m_Paths: []
+    m_Paths:
+    - - {x: 41.999973, y: -3}
+      - {x: 41.999973, y: 0}
+      - {x: 34, y: 0.0000294}
+      - {x: 33.999973, y: 1}
+      - {x: 33, y: 0.99997073}
+      - {x: 32.999973, y: 0}
+      - {x: 30, y: -0.000029300001}
+      - {x: 30.000029, y: -3}
+    - - {x: 61.99997, y: -3}
+      - {x: 61.99997, y: 0}
+      - {x: 44, y: -0.000029300001}
+      - {x: 44.00003, y: -3}
+    - - {x: 23.999971, y: -3}
+      - {x: 23.999971, y: 0}
+      - {x: 16, y: -0.000029300001}
+      - {x: 16.000029, y: -3}
+    - - {x: 11.99997, y: -3}
+      - {x: 11.99997, y: 0}
+      - {x: -10, y: -0.000029300001}
+      - {x: -9.99997, y: -3}
   m_VertexDistance: 0.0005
   m_OffsetDistance: 0.00005
   m_UseDelaunayMesh: 0
@@ -7412,3 +7486,18 @@ PlatformEffector2D:
   m_UseSideFriction: 0
   m_UseSideBounce: 0
   m_SideArc: 1
+--- !u!114 &-2297856395476375207
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 12395, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: Palette Settings
+  m_EditorClassIdentifier: 
+  cellSizing: 0
+  m_TransparencySortMode: 0
+  m_TransparencySortAxis: {x: 0, y: 0, z: 1}
